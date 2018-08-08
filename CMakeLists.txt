@@ -33,6 +33,4 @@ SET(ALL_TEST_FILES ./test/frontend_tests.cpp)
 
 add_executable(all-tests test/test_main.cpp ${ALL_TEST_FILES})
 
-
-
 target_link_libraries(all-tests procgen ${llvm_libs})
