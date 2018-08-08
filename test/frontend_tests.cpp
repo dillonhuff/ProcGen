@@ -1,15 +1,9 @@
 #include "catch.hpp"
 
-// #include "llvm/ADT/StringRef.h"
-// #include "llvm/ExecutionEngine/ExecutionEngine.h"
-// #include "llvm/ExecutionEngine/MCJIT.h"
-// #include "llvm/IR/Instructions.h"
-// #include "llvm/IR/LLVMContext.h"
-// #include "llvm/IR/Module.h"
-// #include "llvm/IRReader/IRReader.h"
-// #include "llvm/Support/MemoryBuffer.h"
-// #include "llvm/Support/raw_os_ostream.h"
+#include <fstream>
 
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/InstrTypes.h"
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/raw_ostream.h>
@@ -33,6 +27,69 @@ using namespace std;
 LLVMContext context;
 
 namespace ProcGen {
+
+  class FSMState {
+  };
+
+  class FSMCondition {
+  };
+
+  class FSMEdge {
+  };
+
+  typedef int NodeId;
+
+  class LowFSM {
+
+    NodeId nextNode;
+    
+    std::map<NodeId, FSMState> states;
+    std::map<NodeId, std::vector<FSMEdge> > receivers;
+
+  public:
+
+    LowFSM() : nextNode(1) {}
+
+    NodeId addState(const FSMState& st) {
+      NodeId id = nextNode;
+      nextNode++;
+      states.insert({id, st});
+
+      return id;
+    }
+
+    void setStartState(const NodeId id) {
+      assert(contains_key(id, states));
+      
+    }
+
+    void addEdge(const NodeId src, const NodeId dst, const FSMCondition cond) {
+      
+    }
+
+    std::set<NodeId> getNodeIds() const {
+      std::set<NodeId> ids;
+      for (auto s : states) {
+        ids.insert(s.first);
+      }
+      return ids;
+    }
+  };
+
+  void emitVerilog(const std::string& moduleName, const LowFSM& fsm) {
+    ofstream out(moduleName + ".v");
+    out << "module " << moduleName << "(input clk, input rst)" << endl;
+
+    
+
+    for (auto nodeId : fsm.getNodeIds()) {
+      out << "\t// Code for state " << nodeId << endl;
+    }
+
+    out << "endmodule" << endl;
+    
+    out.close();
+  }
 
   TEST_CASE("Parse a tiny C program") {
     SMDiagnostic Err;
@@ -68,10 +125,10 @@ namespace ProcGen {
 
     outs() << "--All functions\n";
     for (auto& f : Mod->functions()) {
-      outs() << "\tfound function\n";
+      outs() << "\t" << f.getName() << "\n";
     }
 
-   Mod->print(llvm::errs(), nullptr);
+    //Mod->print(llvm::errs(), nullptr);
 
     const SymbolTableList<GlobalVariable>& gt = Mod->getGlobalList();
       
@@ -79,53 +136,34 @@ namespace ProcGen {
 
     for (auto& g : gt) {
       if (g.hasName()) {
-        outs() << "Name = " << g.getValueName() << "\n";
+        outs() << "Name = " << g.getName() << "\n";
       } else {
         outs() << "Global with no name?\n";
       }
     }
 
+    Function* f = Mod->getFunction("main");
+    assert(f != nullptr);
+
+    LowFSM programState;
+    
+    cout << "Basic blocks in main" << endl;
+    for (auto& bb : f->getBasicBlockList()) {
+      outs() << "----- BASIC BLOCK" << "\n";
+      outs() << bb << "\n";
+      outs() << "Terminator for this block" << "\n";
+
+      auto termInst = bb.getTerminator();
+      outs() << bb.getTerminator()->getOpcode() << "\n";
+      if (BranchInst::classof(termInst)) {
+        outs() << "\t\tIs a branch" << "\n";
+      } else {
+        outs() << "\t\tNOT branch" << "\n";
+      }
+    }
+
+    emitVerilog("tiny_test", programState);
+
   }
-
-    // llvm::InitializeAllTargets();
-    // llvm::InitializeAllTargetMCs();
-    // llvm::InitializeAllAsmPrinters();
-    // llvm::InitializeAllAsmParsers();    
-
-    // //InitializeNativeTarget();
-    // //LLVMInitializeNativeAsmPrinter();
-
-
-    // SMDiagnostic error;
-    // //Module *m = new llvm::Module("llvm-mod", context); //parseIRFile("tiny_test.ll", error, context).get();
-    //auto buf = MemoryBuffer::getMemBuffer("tiny_test.bc");
-    //auto me = parseBitcodeFile(*buf, context); //parseBitcodeFile("tiny_test.ll", error, context).get();
-    // if (me) {
-    //   auto& m = me.get();
-    //   //cout << "source file name " << m->getSourceFileName() << endl;
-    //   llvm::errs() << "Module = " << m->getModuleIdentifier() << endl;
-    //   //cout << "--All functions" << endl;
-    //   // for (auto& f : m->functions()) {
-    //   //   cout << "\tfound function" << endl;
-    //   // }
-
-    //   //m->print(llvm::errs(), nullptr);
-
-    //   // const SymbolTableList<GlobalVariable>& gt = m->getGlobalList();
-      
-    //   // cout << "# of globals = " << gt.size() << endl;
-
-    //   // for (auto& g : gt) {
-    //   //   if (g.hasName()) {
-    //   //     cout << "Name = " << g.getValueName() << endl;
-    //   //   } else {
-    //   //     cout << "Global with no name?" << endl;
-    //   //   }
-    //   //      }
-    // } else {
-    //   cout << "ERROR" << endl;
-    // }
-
-  //  }
 
 }
